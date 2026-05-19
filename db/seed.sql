@@ -183,6 +183,21 @@ on conflict (name) do update set
   updated_at        = now();
 
 -- ---------------------------------------------------------------------------
+-- Recipe images (keyless quick fill). Deterministic LoremFlickr URL from the
+-- first 3 keywords of image_search_term + a stable lock so the photo doesn't
+-- reshuffle every page load. Only fills nulls or prior LoremFlickr URLs, so
+-- any hand-curated photo set later survives a re-seed.
+-- ---------------------------------------------------------------------------
+update public.recipes
+set image_url =
+      'https://loremflickr.com/800/450/'
+      || array_to_string(
+           (string_to_array(trim(image_search_term), ' '))[1:3], ',')
+      || '?lock=' || (abs(hashtext(name)) % 100000)::text
+where image_search_term is not null
+  and (image_url is null or image_url like 'https://loremflickr.com/%');
+
+-- ---------------------------------------------------------------------------
 -- Plan (single active plan; week_started_on = Monday of the current ISO week)
 -- ---------------------------------------------------------------------------
 insert into public.plans (household_id, name, current_week, week_started_on, active)

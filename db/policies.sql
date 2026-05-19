@@ -197,3 +197,19 @@ create policy notification_log_select_own on public.notification_log
 -- app_config has RLS enabled and intentionally NO policies: only the
 -- SECURITY DEFINER signup trigger and the service role touch it.
 
+-- ---------------------------------------------------------------------------
+-- Realtime: broadcast grocery_checks changes so both household members see
+-- ticks sync live. Idempotent.
+-- ---------------------------------------------------------------------------
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime'
+      and schemaname = 'public'
+      and tablename = 'grocery_checks'
+  ) then
+    alter publication supabase_realtime add table public.grocery_checks;
+  end if;
+end $$;
+

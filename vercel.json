@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/rotate-week",
+      "schedule": "30 12 * * 0"
+    }
+  ]
+}

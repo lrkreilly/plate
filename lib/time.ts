@@ -77,3 +77,10 @@ export function formatDateHeader(now: NzNow = nzNow()): string {
 export function weekdayName(isoWeekday: number): string {
   return WEEKDAY_NAMES[isoWeekday - 1] ?? "";
 }
+
+// YYYY-MM-DD of Monday of the current NZ week — the canonical week key.
+export function nzMondayOfThisWeek(now: NzNow = nzNow()): string {
+  const dt = new Date(Date.UTC(now.year, now.month - 1, now.day));
+  dt.setUTCDate(dt.getUTCDate() - (now.isoWeekday - 1));
+  return dt.toISOString().slice(0, 10);
+}

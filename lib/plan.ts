@@ -90,6 +90,46 @@ export async function getTodayMeals(
   };
 }
 
+export interface WeekDay {
+  dayOfWeek: number; // 1-5
+  breakfast: SlotWithRecipe | null;
+  lunch: SlotWithRecipe | null;
+  dinner: SlotWithRecipe | null;
+}
+
+export async function getWeekGrid(
+  supabase: DB,
+  planId: string,
+  week: number,
+): Promise<WeekDay[]> {
+  const { data: slots, error } = await supabase
+    .from("meal_slots")
+    .select("id, meal_type, day_of_week, recipe:recipes(*)")
+    .eq("plan_id", planId)
+    .eq("week", week);
+  if (error) console.error("getWeekGrid:", error.message);
+
+  return [1, 2, 3, 4, 5].map((dow) => {
+    const pick = (t: MealType): SlotWithRecipe | null => {
+      const row = slots?.find(
+        (s) => s.day_of_week === dow && s.meal_type === t,
+      );
+      if (!row || !row.recipe) return null;
+      return {
+        id: row.id,
+        meal_type: t,
+        recipe: row.recipe as unknown as Recipe,
+      };
+    };
+    return {
+      dayOfWeek: dow,
+      breakfast: pick("breakfast"),
+      lunch: pick("lunch"),
+      dinner: pick("dinner"),
+    };
+  });
+}
+
 export async function getRecipe(
   supabase: DB,
   id: string,

@@ -8,14 +8,20 @@ begin;
 -- ---------------------------------------------------------------------------
 -- Household + config
 -- ---------------------------------------------------------------------------
+-- Exactly ONE household. Keyed by "the oldest row", never by name, so a
+-- later rename can't spawn a second household and orphan the plan.
 insert into public.households (name)
-select 'The Carr Household'
-where not exists (select 1 from public.households where name = 'The Carr Household');
+select 'The Reilly Household'
+where not exists (select 1 from public.households);
+
+update public.households
+  set name = 'The Reilly Household'
+  where id = (select id from public.households order by created_at limit 1);
 
 insert into public.app_config (id, household_id, owner_email)
 values (
   true,
-  (select id from public.households where name = 'The Carr Household'),
+  (select id from public.households order by created_at limit 1),
   'l.r.k.reilly@gmail.com'
 )
 on conflict (id) do update
@@ -181,7 +187,7 @@ on conflict (name) do update set
 -- ---------------------------------------------------------------------------
 insert into public.plans (household_id, name, current_week, week_started_on, active)
 select
-  (select id from public.households where name = 'The Carr Household'),
+  (select id from public.households order by created_at limit 1),
   'Mediterranean Rotation v1',
   1,
   (date_trunc('week', current_date))::date,
@@ -189,6 +195,11 @@ select
 where not exists (
   select 1 from public.plans where name = 'Mediterranean Rotation v1'
 );
+
+-- Re-point an existing plan at the canonical household (heals prior drift).
+update public.plans
+  set household_id = (select id from public.households order by created_at limit 1)
+  where name = 'Mediterranean Rotation v1';
 
 -- Rebuild slots + grocery for an idempotent re-seed.
 delete from public.meal_slots
@@ -344,5 +355,40 @@ g (week, category, display_order, name, quantity) as (
 insert into public.grocery_items (plan_id, week, category, display_order, name, quantity)
 select p.plan_id, g.week, g.category, g.display_order, g.name, g.quantity
 from g cross join p;
+
+-- ---------------------------------------------------------------------------
+-- Backfill / self-heal: the signup trigger only fires for NEW auth users, so
+-- anyone who signed in before app_config existed is missing from public.users
+-- / household_members and RLS hides everything from them. Re-running this seed
+-- reconciles them. Idempotent.
+-- ---------------------------------------------------------------------------
+insert into public.users (id, email, display_name)
+select au.id, au.email,
+       coalesce(au.raw_user_meta_data ->> 'display_name',
+                split_part(au.email, '@', 1))
+from auth.users au
+on conflict (id) do nothing;
+
+insert into public.household_members (household_id, user_id, role)
+select cfg.household_id,
+       u.id,
+       case
+         when cfg.owner_email is not null
+              and lower(cfg.owner_email) = lower(u.email)
+         then 'owner' else 'member'
+       end
+from public.users u
+cross join public.app_config cfg
+where cfg.household_id is not null
+on conflict (household_id, user_id) do nothing;
+
+-- Drop any orphan duplicate households left by an earlier name-keyed seed
+-- (none of these are referenced once the plan is repointed above).
+delete from public.households h
+where h.id <> (select id from public.households order by created_at limit 1)
+  and not exists (select 1 from public.plans p where p.household_id = h.id)
+  and not exists (
+    select 1 from public.household_members m where m.household_id = h.id
+  );
 
 commit;

@@ -5,6 +5,27 @@ import { nzDateString } from "@/lib/time";
 type DB = SupabaseClient<Database>;
 export type Supplement = Database["public"]["Tables"]["supplements"]["Row"];
 
+export const SCHEDULE_OPTIONS = [
+  { value: "morning_coffee", label: "Morning — with coffee" },
+  { value: "morning_breakfast", label: "Morning — with breakfast" },
+  { value: "with_meal", label: "With a meal" },
+  { value: "anytime", label: "Anytime" },
+  { value: "evening_bedtime", label: "Evening — before bed" },
+] as const;
+
+export async function getUserSupplements(
+  supabase: DB,
+  userId: string,
+): Promise<Supplement[]> {
+  const { data, error } = await supabase
+    .from("supplements")
+    .select("*")
+    .eq("user_id", userId)
+    .order("display_order", { ascending: true });
+  if (error) console.error("getUserSupplements:", error.message);
+  return data ?? [];
+}
+
 export interface StackItem {
   supplement: Supplement;
   takenToday: boolean;

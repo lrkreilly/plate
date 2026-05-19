@@ -69,6 +69,13 @@ create policy users_update_own on public.users
   using (id = auth.uid())
   with check (id = auth.uid());
 
+-- Household members can see each other's basic record (Stats labels the
+-- other person's name; meal_logs are already household-visible).
+drop policy if exists users_select_household on public.users;
+create policy users_select_household on public.users
+  for select to authenticated
+  using (id = auth.uid() or public.shares_household(id));
+
 -- ---------------------------------------------------------------------------
 -- households / household_members — visible to members
 -- ---------------------------------------------------------------------------

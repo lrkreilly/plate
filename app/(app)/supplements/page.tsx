@@ -1,10 +1,16 @@
-export default function SupplementsPage() {
-  return (
-    <section className="py-6">
-      <h1 className="text-2xl font-bold">Your supplements</h1>
-      <p className="text-muted-foreground mt-2 text-sm">
-        Per-user supplement editor ships in Sprint 4.
-      </p>
-    </section>
-  );
+import { createClient } from "@/lib/supabase/server";
+import { getUserSupplements } from "@/lib/supplements";
+import { SupplementsEditor } from "@/components/supplements-editor";
+
+export default async function SupplementsPage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const supplements = user
+    ? await getUserSupplements(supabase, user.id)
+    : [];
+
+  return <SupplementsEditor supplements={supplements} />;
 }

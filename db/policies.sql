@@ -14,7 +14,7 @@ returns boolean
 language sql
 stable
 security definer
-set search_path = public
+set search_path to public
 as $$
   select exists (
     select 1 from public.household_members
@@ -27,7 +27,7 @@ returns boolean
 language sql
 stable
 security definer
-set search_path = public
+set search_path to public
 as $$
   select exists (
     select 1
@@ -180,3 +180,4 @@ create policy notification_log_select_own on public.notification_log
 
 -- app_config has RLS enabled and intentionally NO policies: only the
 -- SECURITY DEFINER signup trigger and the service role touch it.
+

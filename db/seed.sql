@@ -16,7 +16,7 @@ insert into public.app_config (id, household_id, owner_email)
 values (
   true,
   (select id from public.households where name = 'The Carr Household'),
-  'REPLACE_WITH_LUKE_EMAIL'
+  'l.r.k.reilly@gmail.com'
 )
 on conflict (id) do update
   set household_id = excluded.household_id,

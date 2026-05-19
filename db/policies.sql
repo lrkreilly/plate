@@ -7,6 +7,22 @@
 -- bypassed and break the cycle.
 
 -- ---------------------------------------------------------------------------
+-- Table privileges. Tables created via raw SQL do NOT auto-grant to Supabase's
+-- anon/authenticated roles, so RLS-protected queries fail with
+-- "permission denied for table ..." before RLS is even evaluated. RLS still
+-- enforces per-row access on top of these grants.
+-- ---------------------------------------------------------------------------
+grant usage on schema public to anon, authenticated, service_role;
+
+grant select, insert, update, delete
+  on all tables in schema public
+  to authenticated, service_role;
+
+alter default privileges in schema public
+  grant select, insert, update, delete on tables
+  to authenticated, service_role;
+
+-- ---------------------------------------------------------------------------
 -- Helpers
 -- ---------------------------------------------------------------------------
 create or replace function public.is_household_member(hid uuid)

@@ -43,13 +43,14 @@ export function recipeIngredients(recipe: Recipe): string[] {
 
 export async function getActivePlan(supabase: DB): Promise<Plan | null> {
   // RLS restricts this to the signed-in user's household plan.
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("plans")
     .select("*")
     .eq("active", true)
     .order("created_at", { ascending: true })
     .limit(1)
     .maybeSingle();
+  if (error) console.error("getActivePlan:", error.message);
   return data ?? null;
 }
 
@@ -61,12 +62,13 @@ export async function getTodayMeals(
 
   const { dayOfWeek, isWeekend } = effectiveWeekday(nzNow());
 
-  const { data: slots } = await supabase
+  const { data: slots, error } = await supabase
     .from("meal_slots")
     .select("id, meal_type, recipe:recipes(*)")
     .eq("plan_id", plan.id)
     .eq("week", plan.current_week)
     .eq("day_of_week", dayOfWeek);
+  if (error) console.error("getTodayMeals:", error.message);
 
   const byType = (t: MealType): SlotWithRecipe | null => {
     const row = slots?.find((s) => s.meal_type === t);
